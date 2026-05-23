@@ -1,234 +1,67 @@
-(function() {
-  let questions = JSON.parse(localStorage.getItem('examQuestions') || '[]');
-  let optionIndex = 0;
+let bank = JSON.parse(localStorage.getItem('examBank') || '[]');
+let optCount = 0;
 
-  // Cargar URL de GAS
-  const savedGasUrl = localStorage.getItem('gasUrl');
-  if (savedGasUrl) document.getElementById('gasUrl').value = savedGasUrl;
+document.getElementById('gasUrl').value = localStorage.getItem('gasUrl') || '';
+renderBank();
 
-  renderQuestionsList();
-  updateCorrectOptions();
+window.showTab = t => {
+  document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e => e.classList.remove('active'));
+  document.getElementById(`tab-${t}`).classList.add('active');
+  event.target.classList.add('active');
+};
 
-  window.saveGasUrl = function() {
-    const url = document.getElementById('gasUrl').value.trim();
-    if (url) {
-      localStorage.setItem('gasUrl', url);
-      alert('URL de Google Apps Script guardada.');
-    }
-  };
+window.addOpt = () => {
+  optCount++;
+  const c = document.getElementById('optsContainer');
+  const d = document.createElement('div'); d.className = 'opt-row';
+  d.innerHTML = `<input type="text" class="opt-text" data-id="${optCount-1}" placeholder="Opción ${optCount}"><button class="btn btn-small btn-danger" onclick="this.parentElement.remove(); updateCorrectUI()">✕</button>`;
+  c.appendChild(d); updateCorrectUI();
+};
 
-  window.addOption = function() {
-    optionIndex++;
-    const container = document.getElementById('optionsList');
-    const div = document.createElement('div');
-    div.className = 'option-input-row';
-    div.innerHTML = `
-      <input type="text" class="option-text" placeholder="Opción ${optionIndex}" data-index="${optionIndex - 1}">
-      <button class="btn btn-small btn-danger" onclick="this.parentElement.remove(); updateCorrectOptions();">✕</button>
-    `;
-    container.appendChild(div);
-    updateCorrectOptions();
-  };
+window.updateCorrectUI = () => {
+  const type = document.getElementById('qType').value;
+  const c = document.getElementById('correctUI'); c.innerHTML = '<label>Marcar correcta/s:</label>';
+  document.querySelectorAll('.opt-text').forEach(o => {
+    const t = type === 'single' ? 'radio' : 'checkbox';
+    c.innerHTML += `<label class="opt-label"><input type="${t}" name="correct" value="${o.dataset.id}"> ${o.placeholder}</label> `;
+  });
+};
 
-  window.toggleCorrectOptions = updateCorrectOptions;
+window.addToBank = () => {
+  const text = document.getElementById('qText').value.trim();
+  const type = document.getElementById('qType').value;
+  const points = parseFloat(document.getElementById('qPoints').value) || 1;
+  const options = [...document.querySelectorAll('.opt-text')].map(e => e.value.trim()).filter(v => v);
+  const correct = [...document.querySelectorAll('input[name="correct"]:checked')].map(e => parseInt(e.value));
 
-  function updateCorrectOptions() {
-    const type = document.getElementById('qType').value;
-    const options = document.querySelectorAll('.option-text');
-    const container = document.getElementById('correctOptions');
-    container.innerHTML = '';
+  if (!text || options.length < 2 || correct.length === 0) return alert('Complete correctamente enunciado, opciones y respuesta/s.');
+  if (type === 'single' && correct.length > 1) return alert('Opción única solo permite 1 correcta.');
 
-    options.forEach(opt => {
-      const idx = opt.dataset.index;
-      const label = document.createElement('label');
-      label.className = 'option-label';
-      const inputType = type === 'single' ? 'radio' : 'checkbox';
-      label.innerHTML = `
-        <input type="${inputType}" name="correctOption" value="${idx}">
-        ${opt.placeholder || opt.value || `Opción ${parseInt(idx) + 1}`}
-      `;
-      container.appendChild(label);
-    });
-  }
+  bank.push({ text, type, options, correct, points });
+  localStorage.setItem('examBank', JSON.stringify(bank));
+  document.getElementById('qText').value = '';
+  document.getElementById('optsContainer').innerHTML = '';
+  optCount = 0; updateCorrectUI(); renderBank();
+};
 
-  window.addQuestion = function() {
-    const text = document.getElementById('qText').value.trim();
-    if (!text) { alert('Ingrese el enunciado.'); return; }
+function renderBank() {
+  document.getElementById('bankCount').textContent = bank.length;
+  document.getElementById('bankList').innerHTML = bank.map((q,i) => `<div class="q-item"><strong>P${i+1}</strong> (${q.type==='single'?'Única':'Múltiple'}) ${q.text.substring(0,40)}... <button class="btn btn-small btn-danger" onclick="bank.splice(${i},1); localStorage.setItem('examBank', JSON.stringify(bank)); renderBank();">✕</button></div>`).join('');
+}
 
-    const type = document.getElementById('qType').value;
-    const points = parseFloat(document.getElementById('qPoints').value) || 1;
-    const time = parseInt(document.getElementById('qTime').value) || 60;
+window.generateExam = () => {
+  const nS = parseInt(document.getElementById('nSingle').value) || 0;
+  const nM = parseInt(document.getElementById('nMulti').value) || 0;
+  const singles = bank.filter(q => q.type === 'single');
+  const multis = bank.filter(q => q.type === 'multiple');
 
-    const options = [];
-    document.querySelectorAll('.option-text').forEach(el => {
-      if (el.value.trim()) options.push(el.value.trim());
-    });
+  if (singles.length < nS || multis.length < nM) return alert(`Faltan preguntas en el banco. Necesitas al menos ${nS} únicas y ${nM} múltiples.`);
 
-    if (options.length < 2) { alert('Ingrese al menos 2 opciones.'); return; }
-
-    const correct = [];
-    document.querySelectorAll('input[name="correctOption"]:checked').forEach(el => {
-      correct.push(parseInt(el.value));
-    });
-
-    if (correct.length === 0) { alert('Seleccione al menos una respuesta correcta.'); return; }
-
-    questions.push({ text, type, options, correct, points, time });
-    localStorage.setItem('examQuestions', JSON.stringify(questions));
-
-    // Limpiar formulario
-    document.getElementById('qText').value = '';
-    document.getElementById('qPoints').value = '1';
-    document.getElementById('qTime').value = '60';
-    document.getElementById('optionsList').innerHTML = '';
-    optionIndex = 0;
-    updateCorrectOptions();
-    renderQuestionsList();
-  };
-
-  function renderQuestionsList() {
-    const list = document.getElementById('questionsList');
-    document.getElementById('qCount').textContent = questions.length;
-
-    if (questions.length === 0) {
-      list.innerHTML = '<p>No hay preguntas cargadas.</p>';
-      return;
-    }
-
-    list.innerHTML = questions.map((q, i) => `
-      <div class="question-item">
-        <strong>P${i + 1}:</strong> ${q.text}
-        <span class="badge">${q.type === 'single' ? 'Única' : 'Múltiple'}</span>
-        <span class="badge">${q.points} pts</span>
-        <span class="badge">${q.time}s</span>
-        <button class="btn btn-small btn-danger" onclick="removeQuestion(${i})">✕</button>
-      </div>
-    `).join('');
-  }
-
-  window.removeQuestion = function(index) {
-    questions.splice(index, 1);
-    localStorage.setItem('examQuestions', JSON.stringify(questions));
-    renderQuestionsList();
-  };
-
-  window.clearQuestions = function() {
-    if (confirm('¿Eliminar todas las preguntas?')) {
-      questions = [];
-      localStorage.removeItem('examQuestions');
-      renderQuestionsList();
-    }
-  };
-
-  window.publishExam = function() {
-    if (questions.length === 0) { alert('Agregue al menos una pregunta.'); return; }
-    localStorage.setItem('examPublished', JSON.stringify({
-      published: true,
-      date: Date.now()
-    }));
-    alert('✅ Examen publicado y listo para que los alumnos accedan.');
-  };
-
-  // Tabs
-  window.showTab = function(tabName) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(`tab-${tabName}`).classList.add('active');
-    event.target.classList.add('active');
-
-    if (tabName === 'results') loadResults();
-    if (tabName === 'feedback') checkFeedbackStatus();
-  };
-
-  // Resultados
-  function loadResults() {
-    const container = document.getElementById('resultsList');
-    let html = '';
-    let found = false;
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key.startsWith('examResult_')) {
-        found = true;
-        const data = JSON.parse(localStorage.getItem(key));
-        const pct = ((data.totalScore / data.maxScore) * 100).toFixed(1);
-        html += `
-          <div class="result-item">
-            <strong>${data.student.apellido}, ${data.student.nombre}</strong> — DNI: ${data.student.dni}<br>
-            Puntaje: ${data.totalScore} / ${data.maxScore} (${pct}%)<br>
-            Fecha: ${new Date(data.timestamp).toLocaleString()}
-          </div>
-        `;
-      }
-    }
-
-    if (!found) {
-      // Intentar cargar desde GAS si hay URL
-      const gasUrl = localStorage.getItem('gasUrl');
-      if (gasUrl) {
-        html = '<p><em>Intentando cargar resultados desde Google Sheets...</em></p>';
-        fetchResultsFromSheets(gasUrl);
-      } else {
-        html = '<p>No hay resultados disponibles. Los alumnos aún no completaron el examen.</p>';
-      }
-    }
-
-    container.innerHTML = html || '<p>No hay resultados.</p>';
-  }
-
-  async function fetchResultsFromSheets(url) {
-    try {
-      // Ajustar URL para GET
-      const getUrl = url + '?action=getResults';
-      const response = await fetch(getUrl);
-      const data = await response.json();
-      if (data && data.results && data.results.length > 0) {
-        let html = '';
-        data.results.forEach(r => {
-          const pct = ((r.totalScore / r.maxScore) * 100).toFixed(1);
-          html += `
-            <div class="result-item">
-              <strong>${r.student.apellido}, ${r.student.nombre}</strong> — DNI: ${r.student.dni}<br>
-              Puntaje: ${r.totalScore} / ${r.maxScore} (${pct}%)<br>
-              Fecha: ${new Date(r.timestamp).toLocaleString()}
-            </div>
-          `;
-        });
-        document.getElementById('resultsList').innerHTML = html;
-      }
-    } catch (e) {
-      document.getElementById('resultsList').innerHTML += '<p style="color:#e74c3c;">Error al cargar desde Sheets. Revise la URL del Apps Script.</p>';
-    }
-  }
-
-  // Feedback
-  window.enableFeedback = function() {
-    localStorage.setItem('feedbackEnabled', 'true');
-    document.getElementById('feedbackStatus').textContent = '✅ Feedback habilitado. Los alumnos pueden ver sus resultados.';
-    document.getElementById('feedbackStatus').style.color = '#2ecc71';
-  };
-
-  window.disableFeedback = function() {
-    localStorage.removeItem('feedbackEnabled');
-    document.getElementById('feedbackStatus').textContent = '❌ Feedback deshabilitado.';
-    document.getElementById('feedbackStatus').style.color = '#e74c3c';
-  };
-
-  function checkFeedbackStatus() {
-    const enabled = localStorage.getItem('feedbackEnabled');
-    const el = document.getElementById('feedbackStatus');
-    if (enabled === 'true') {
-      el.textContent = '✅ Feedback habilitado actualmente.';
-      el.style.color = '#2ecc71';
-    } else {
-      el.textContent = '❌ Feedback no habilitado.';
-      el.style.color = '#e74c3c';
-    }
-  }
-
-  // Agregar opciones iniciales
-  addOption();
-  addOption();
-  addOption();
-  addOption();
-})();
+  const shuffle = arr => arr.sort(() => Math.random() - 0.5);
+  const exam = [...shuffle(singles).slice(0, nS), ...shuffle(multis).slice(0, nM)];
+  localStorage.setItem('examQuestions', JSON.stringify(exam));
+  localStorage.setItem('examConfig', JSON.stringify({ totalTime: (parseInt(document.getElementById('totalTime').value) || 45) * 60 }));
+  
+  document.getElementById('examPreview').innerHTML = `✅ Examen generado: ${exam.length} preguntas (${nS} única, ${nM} múltiple). Tiempo: ${document.getElementById('totalTime').value} min.`;
+};

@@ -1,218 +1,90 @@
-(function() {
-  // Verificar autenticación
-  const student = JSON.parse(localStorage.getItem('examStudent'));
-  if (!student) {
-    window.location.href = 'index.html';
-    return;
-  }
+const student = JSON.parse(localStorage.getItem('examStudent'));
+if (!student) window.location.href = 'index.html';
 
-  document.getElementById('studentInfo').textContent = `${student.apellido}, ${student.nombre} (DNI: ${student.dni})`;
+document.getElementById('studentInfo').textContent = `${student.apellido}, ${student.nombre} (DNI: ${student.dni})`;
 
-  // Cargar preguntas
-  let questions = [];
-  try {
-    const data = localStorage.getItem('examQuestions');
-    if (!data) {
-      alert('No hay examen configurado. Contacte al profesor.');
-      window.location.href = 'index.html';
-      return;
-    }
-    questions = JSON.parse(data);
-  } catch(e) {
-    alert('Error al cargar el examen.');
-    window.location.href = 'index.html';
-    return;
-  }
+const questions = JSON.parse(localStorage.getItem('examQuestions') || '[]');
+const config = JSON.parse(localStorage.getItem('examConfig') || '{}');
+if (!questions.length) { alert('No hay examen configurado.'); window.location.href='index.html'; }
 
-  let currentQuestion = 0;
-  let answers = {};
-  let timers = {};
-  let quizSubmitted = false;
-  window.quizSubmitted = false;
+let current = 0, answers = {}, timerInt, timeLeft = config.totalTime || 2700;
+window.quizSubmitted = false;
 
-  // Renderizar pregunta
-  function renderQuestion() {
-    const q = questions[currentQuestion];
-    const container = document.getElementById('quizContent');
-    const answered = answers[currentQuestion] || [];
+function startTimer() {
+  const upd = () => {
+    const m = Math.floor(timeLeft/60), s = timeLeft%60;
+    document.getElementById('timer').textContent = `⏱️ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('timer').style.color = timeLeft < 120 ? '#e74c3c' : '#2ecc71';
+  };
+  upd();
+  timerInt = setInterval(() => {
+    timeLeft--; upd();
+    if (timeLeft <= 0) { clearInterval(timerInt); document.getElementById('timeModal').style.display='flex'; }
+  }, 1000);
+}
 
-    let html = `<div class="question-card">`;
-    html += `<h3>Pregunta ${currentQuestion + 1} de ${questions.length}</h3>`;
-    html += `<p class="question-text">${q.text}</p>`;
-    html += `<p class="question-info">Puntaje: ${q.points} pts | Tiempo: ${q.time}s</p>`;
+function render() {
+  const q = questions[current];
+  const ans = answers[current] || [];
+  let html = `<div class="q-card"><h3>Pregunta ${current+1}</h3><p>${q.text} <span class="badge">${q.type==='single'?'Única':'Múltiple'}</span></p>`;
+  q.options.forEach((o,i) => {
+    const checked = ans.includes(i) ? 'checked' : '';
+    const type = q.type === 'single' ? 'radio' : 'checkbox';
+    html += `<label class="opt-label"><input type="${type}" name="q${current}" value="${i}" ${checked} onchange="save(${current},${i})"> ${o}</label>`;
+  });
+  html += `</div>`;
+  document.getElementById('quizContent').innerHTML = html;
+  document.getElementById('qCounter').textContent = `${current+1} / ${questions.length}`;
+  document.getElementById('btnPrev').style.display = current ? 'inline-block' : 'none';
+  document.getElementById('btnNext').style.display = current < questions.length-1 ? 'inline-block' : 'none';
+  document.getElementById('btnSubmit').style.display = current === questions.length-1 ? 'inline-block' : 'none';
+}
 
+window.save = (q,i) => {
+  if (!answers[q]) answers[q] = [];
+  if (questions[q].type === 'single') { answers[q] = [i]; }
+  else { const idx = answers[q].indexOf(i); idx > -1 ? answers[q].splice(idx,1) : answers[q].push(i); }
+};
+
+window.prev = () => { if(current>0){current--; render();} };
+window.next = () => { if(current<questions.length-1){current++; render();} };
+
+window.submit = () => {
+  if (window.quizSubmitted) return;
+  window.quizSubmitted = true;
+  clearInterval(timerInt);
+  document.getElementById('timeModal').style.display = 'none';
+
+  let raw = 0, maxRaw = 0;
+  const results = questions.map((q,i) => {
+    maxRaw += q.points;
+    const user = answers[i] || [];
+    let score = 0;
     if (q.type === 'single') {
-      q.options.forEach((opt, i) => {
-        const checked = answered.includes(i) ? 'checked' : '';
-        html += `<label class="option-label">
-          <input type="radio" name="q${currentQuestion}" value="${i}" ${checked} onchange="saveAnswer(${currentQuestion}, ${i})">
-          ${opt}
-        </label>`;
-      });
-    } else if (q.type === 'multiple') {
-      q.options.forEach((opt, i) => {
-        const checked = answered.includes(i) ? 'checked' : '';
-        html += `<label class="option-label">
-          <input type="checkbox" name="q${currentQuestion}" value="${i}" ${checked} onchange="toggleMultiAnswer(${currentQuestion}, ${i})">
-          ${opt}
-        </label>`;
-      });
-    }
-
-    html += `</div>`;
-    container.innerHTML = html;
-
-    // Actualizar botones
-    document.getElementById('prevBtn').style.display = currentQuestion === 0 ? 'none' : 'inline-block';
-    document.getElementById('nextBtn').style.display = currentQuestion === questions.length - 1 ? 'none' : 'inline-block';
-    document.getElementById('submitBtn').style.display = currentQuestion === questions.length - 1 ? 'inline-block' : 'none';
-
-    // Iniciar timer
-    startTimer(currentQuestion);
-  }
-
-  // Timer
-  function startTimer(index) {
-    if (timers[index]) clearInterval(timers[index]);
-
-    let timeLeft = questions[index].time;
-    const timerEl = document.getElementById('timer');
-
-    function updateDisplay() {
-      const min = Math.floor(timeLeft / 60);
-      const sec = timeLeft % 60;
-      timerEl.textContent = `⏱️ ${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-      timerEl.style.color = timeLeft <= 10 ? '#e74c3c' : timeLeft <= 30 ? '#f39c12' : '#2ecc71';
-    }
-
-    updateDisplay();
-    timers[index] = setInterval(() => {
-      timeLeft--;
-      updateDisplay();
-      if (timeLeft <= 0) {
-        clearInterval(timers[index]);
-        if (index === questions.length - 1) {
-          submitQuiz();
-        } else {
-          document.getElementById('timeUpModal').style.display = 'flex';
-        }
-      }
-    }, 1000);
-  }
-
-  // Guardar respuesta single
-  window.saveAnswer = function(qIndex, optIndex) {
-    answers[qIndex] = [optIndex];
-  };
-
-  // Guardar respuesta multiple
-  window.toggleMultiAnswer = function(qIndex, optIndex) {
-    if (!answers[qIndex]) answers[qIndex] = [];
-    const idx = answers[qIndex].indexOf(optIndex);
-    if (idx > -1) {
-      answers[qIndex].splice(idx, 1);
+      score = user[0] === q.correct[0] ? q.points : 0;
     } else {
-      answers[qIndex].push(optIndex);
+      const correctSet = new Set(q.correct);
+      const w = q.points / correctSet.size;
+      let hits = 0, misses = 0;
+      user.forEach(u => correctSet.has(u) ? hits++ : misses++);
+      score = Math.max(0, (hits - misses) * w);
     }
-  };
+    raw += score;
+    return { questionIndex: i, userAnswer: user, correct: q.correct, score };
+  });
 
-  // Navegación
-  window.nextQuestion = function() {
-    if (currentQuestion < questions.length - 1) {
-      currentQuestion++;
-      renderQuestion();
-    }
-  };
+  const nota10 = maxRaw > 0 ? (raw / maxRaw * 10) : 0;
+  const payload = { student, results, rawScore: raw, maxRawScore: maxRaw, finalScore10: parseFloat(nota10.toFixed(2)), timestamp: Date.now() };
+  localStorage.setItem(`exam_${student.dni}`, JSON.stringify(payload));
+  sendToSheets(payload);
 
-  window.prevQuestion = function() {
-    if (currentQuestion > 0) {
-      currentQuestion--;
-      renderQuestion();
-    }
-  };
+  document.querySelector('.container').innerHTML = `<div class="res-card"><h2>✅ Examen enviado</h2><p>Puede ver su nota cuando el profesor lo habilite.</p><a href="index.html" class="btn btn-primary">Volver</a></div>`;
+};
 
-  // Enviar examen
-  window.submitQuiz = function() {
-    if (quizSubmitted) return;
-    quizSubmitted = true;
-    window.quizSubmitted = true;
+function sendToSheets(data) {
+  const url = localStorage.getItem('gasUrl');
+  if (!url) return;
+  fetch(url, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) }).catch(console.error);
+}
 
-    // Cerrar todos los timers
-    Object.values(timers).forEach(t => clearInterval(t));
-
-    // Calcular puntaje
-    let totalScore = 0;
-    let maxScore = 0;
-    let results = questions.map((q, i) => {
-      maxScore += q.points;
-      const userAnswer = answers[i] || [];
-      let score = 0;
-
-      if (q.type === 'single') {
-        if (userAnswer[0] === q.correct[0]) {
-          score = q.points;
-        }
-      } else if (q.type === 'multiple') {
-        const correctSet = new Set(q.correct);
-        const userSet = new Set(userAnswer);
-        if (correctSet.size === userSet.size && [...correctSet].every(c => userSet.has(c))) {
-          score = q.points;
-        } else {
-          // Puntaje parcial: aciertos menos errores
-          let hits = 0, penalties = 0;
-          userSet.forEach(u => { if (correctSet.has(u)) hits++; else penalties++; });
-          score = Math.max(0, (hits - penalties) * (q.points / q.correct.length));
-        }
-      }
-
-      totalScore += score;
-      return { questionIndex: i, userAnswer, correct: q.correct, score, maxScore: q.points };
-    });
-
-    const examData = {
-      student,
-      results,
-      totalScore,
-      maxScore,
-      timestamp: Date.now()
-    };
-
-    // Enviar a Google Sheets
-    sendToGoogleSheets(examData);
-
-    // Guardar localmente para feedback
-    localStorage.setItem(`examResult_${student.dni}`, JSON.stringify(examData));
-
-    // Mostrar resultado temporal
-    const container = document.getElementById('quizContent');
-    container.innerHTML = `
-      <div class="result-card">
-        <h2>✅ Examen enviado correctamente</h2>
-        <p>Sus respuestas han sido registradas.</p>
-        <p>Podrá ver sus resultados cuando el profesor habilite el feedback.</p>
-        <button class="btn btn-primary" onclick="window.location.href='index.html'">Volver al inicio</button>
-      </div>
-    `;
-    document.querySelector('.quiz-footer').style.display = 'none';
-    document.getElementById('timer').textContent = '✅ Enviado';
-  };
-
-  // Enviar a Google Sheets vía Apps Script
-  function sendToGoogleSheets(data) {
-    const GAS_URL = localStorage.getItem('gasUrl') || '';
-    if (!GAS_URL) {
-      console.warn('Google Apps Script URL no configurada. Los datos se guardan solo localmente.');
-      return;
-    }
-
-    fetch(GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).catch(err => console.error('Error enviando a Sheets:', err));
-  }
-
-  // Iniciar
-  renderQuestion();
-})();
+startTimer(); render();

@@ -3,74 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resultados del Examen</title>
+  <title>Ver Resultados</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container feedback-container">
-    <h1>📋 Mis Resultados</h1>
-    <div id="studentInfo"></div>
-    <div id="feedbackContent"></div>
-    <a href="index.html" class="btn btn-secondary" style="margin-top:1rem;">← Volver al inicio</a>
+  <div class="container">
+    <h1>📋 Consulta de Resultados</h1>
+    <div class="form-group" style="max-width:300px; margin:auto;">
+      <label>Ingrese su DNI</label>
+      <input type="text" id="dni" placeholder="Ej: 12345678" pattern="[0-9]{7,8}">
+      <button class="btn btn-primary" onclick="fetchResult()" style="width:100%; margin-top:0.5rem">🔍 Buscar</button>
+    </div>
+    <div id="result" style="margin-top:2rem;"></div>
+    <a href="index.html" class="btn btn-secondary" style="display:block; text-align:center; margin-top:2rem;">← Volver</a>
   </div>
-
   <script src="main.js"></script>
   <script>
-    const student = JSON.parse(localStorage.getItem('examStudent'));
-    if (!student) { window.location.href = 'index.html'; }
-
-    document.getElementById('studentInfo').textContent = `${student.apellido}, ${student.nombre} (DNI: ${student.dni})`;
-
-    const feedbackEnabled = localStorage.getItem('feedbackEnabled');
-    if (feedbackEnabled !== 'true') {
-      document.getElementById('feedbackContent').innerHTML = `
-        <div class="result-card">
-          <p>🔒 El profesor aún no habilitó la visualización de resultados. Intente más tarde.</p>
-        </div>
-      `;
-    } else {
-      const resultKey = `examResult_${student.dni}`;
-      const examData = localStorage.getItem(resultKey);
-
-      if (!examData) {
-        document.getElementById('feedbackContent').innerHTML = `
-          <div class="result-card">
-            <p>No se encontraron resultados para su DNI. Asegúrese de haber completado el examen.</p>
-          </div>
-        `;
-      } else {
-        const data = JSON.parse(examData);
-        const pct = ((data.totalScore / data.maxScore) * 100).toFixed(1);
-
-        let html = `
-          <div class="result-card">
-            <h2>Puntaje: ${data.totalScore} / ${data.maxScore} (${pct}%)</h2>
-            <p>Fecha del examen: ${new Date(data.timestamp).toLocaleString()}</p>
-          </div>
-        `;
-
-        const questions = JSON.parse(localStorage.getItem('examQuestions') || '[]');
-        data.results.forEach((r, i) => {
-          const q = questions[i] || {};
-          const isCorrect = r.score >= r.maxScore;
-
-          html += `
-            <div class="feedback-question ${isCorrect ? 'correct' : 'incorrect'}">
-              <h4>Pregunta ${i + 1} ${isCorrect ? '✅' : '❌'} (${r.score} / ${r.maxScore} pts)</h4>
-              <p>${q.text || 'Pregunta no disponible'}</p>
-              <p><strong>Tu respuesta:</strong> ${formatAnswer(r.userAnswer, q.options)}</p>
-              ${!isCorrect ? `<p><strong>Respuesta correcta:</strong> ${formatAnswer(r.correct, q.options)}</p>` : ''}
-            </div>
-          `;
-        });
-
-        document.getElementById('feedbackContent').innerHTML = html;
+    async function fetchResult() {
+      const dni = document.getElementById('dni').value.trim();
+      if (!/^\d{7,8}$/.test(dni)) return alert('Ingrese un DNI válido (7 u 8 dígitos)');
+      const url = localStorage.getItem('gasUrl');
+      if (!url || !url.startsWith('http')) return alert('La URL del Apps Script no está configurada. Contacte al profesor.');
+      
+      document.getElementById('result').innerHTML = '<p>⏳ Buscando...</p>';
+      try {
+        const res = await fetch(`${url}?action=getByDni&dni=${dni}`);
+        const data = await res.json();
+        if (data.found) {
+          const q = JSON.parse(localStorage.getItem('examQuestions') || '[]');
+          let html = `<div class="res-card"><h2>Nota: ${data.data.finalScore10} / 10</h2><p>${data.data.student.apellido}, ${data.data.student.nombre} | ${new Date(data.data.timestamp).toLocaleString()}</p></div>`;
+          data.data.details.forEach(d => {
+            const pq = q.find(x => x.questionIndex === d.q) || {};
+            const isOk = d.userAnswer.join(',') === d.correct.join(',');
+            html += `<div class="fb-q ${isOk?'correct':'incorrect'}">
+              <h4>Pregunta ${d.q+1} ${isOk?'✅':'❌'} (${d.score} pts)</h4>
+              <p>${pq.text || 'Pregunta no disponible'}</p>
+              <p><strong>Tu respuesta:</strong> ${(d.userAnswer||[]).map(i => pq.options[i]||'?').join(', ') || 'Sin responder'}</p>
+              ${!isOk ? `<p><strong>Correcta:</strong> ${d.correct.map(i => pq.options[i]).join(', ')}</p>` : ''}
+            </div>`;
+          });
+          document.getElementById('result').innerHTML = html;
+        } else {
+          document.getElementById('result').innerHTML = `<p class="error-msg">❌ No se encontraron resultados para DNI ${dni}</p>`;
+        }
+      } catch(e) {
+        document.getElementById('result').innerHTML = `<p class="error-msg">Error de conexión. Intente más tarde.</p>`;
       }
-    }
-
-    function formatAnswer(indices, options) {
-      if (!indices || indices.length === 0) return '<em>Sin responder</em>';
-      return indices.map(i => options[i] || `Opción ${i + 1}`).join(', ');
     }
   </script>
 </body>

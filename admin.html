@@ -7,86 +7,57 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container admin-container">
+  <div class="container">
     <h1>👨‍🏫 Panel del Profesor</h1>
-
-    <div class="admin-tabs">
-      <button class="tab-btn active" onclick="showTab('config')">⚙️ Configurar Examen</button>
-      <button class="tab-btn" onclick="showTab('results')">📊 Resultados</button>
-      <button class="tab-btn" onclick="showTab('feedback')">📨 Feedback</button>
+    <div class="form-group">
+      <label>Google Apps Script URL</label>
+      <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <button class="btn btn-small" onclick="localStorage.setItem('gasUrl', document.getElementById('gasUrl').value); alert('Guardado')">💾 Guardar</button>
     </div>
 
-    <!-- Tab: Configuración -->
-    <div id="tab-config" class="tab-content active">
-      <h2>Configuración del Examen</h2>
-      <div class="form-group">
-        <label>Google Apps Script URL (para enviar a Sheets)</label>
-        <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
-        <button class="btn btn-small" onclick="saveGasUrl()">Guardar URL</button>
-      </div>
-
-      <hr>
-
-      <h3>Agregar Pregunta</h3>
-      <div class="form-group">
-        <label>Enunciado</label>
-        <textarea id="qText" rows="3" placeholder="Escriba la pregunta..."></textarea>
-      </div>
-      <div class="form-group">
-        <label>Tipo de pregunta</label>
-        <select id="qType" onchange="toggleCorrectOptions()">
-          <option value="single">Opción única (1 correcta)</option>
-          <option value="multiple">Opciones múltiples (varias correctas)</option>
-        </select>
-      </div>
-      <div class="form-group" id="optionsContainer">
-        <label>Opciones</label>
-        <div id="optionsList"></div>
-        <button class="btn btn-small" onclick="addOption()">+ Agregar opción</button>
-      </div>
-      <div class="form-group">
-        <label>Respuesta/s correcta/s (seleccione)</label>
-        <div id="correctOptions"></div>
-      </div>
-      <div class="form-group">
-        <label>Puntaje</label>
-        <input type="number" id="qPoints" value="1" min="0" step="0.5">
-      </div>
-      <div class="form-group">
-        <label>Tiempo por pregunta (segundos)</label>
-        <input type="number" id="qTime" value="60" min="10" step="5">
-      </div>
-      <button class="btn btn-primary" onclick="addQuestion()">Agregar Pregunta</button>
-
-      <hr>
-
-      <h3>Preguntas cargadas (<span id="qCount">0</span>)</h3>
-      <div id="questionsList"></div>
-      <div class="form-group" style="margin-top:1rem;">
-        <button class="btn btn-success" onclick="publishExam()">🚀 Publicar Examen</button>
-        <button class="btn btn-danger" onclick="clearQuestions()">🗑️ Limpiar todas</button>
-      </div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('bank')">📚 Banco de Preguntas</button>
+      <button class="tab" onclick="showTab('config')">⚙️ Configurar Examen</button>
+      <button class="tab" onclick="showTab('results')">📊 Resultados</button>
     </div>
 
-    <!-- Tab: Resultados -->
+    <!-- TAB BANCO -->
+    <div id="tab-bank" class="tab-content active">
+      <h3>Agregar al Banco</h3>
+      <div class="form-group"><textarea id="qText" rows="2" placeholder="Enunciado"></textarea></div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="qType" onchange="updateCorrectUI()"><option value="single">Opción Única</option><option value="multiple">Opción Múltiple</option></select>
+      </div>
+      <div id="optsContainer"></div>
+      <button class="btn btn-small" onclick="addOpt()">+ Opción</button>
+      <div id="correctUI" class="form-group" style="margin-top:0.5rem;"><label>Marcar correcta/s:</label></div>
+      <div class="form-group"><label>Puntaje</label><input type="number" id="qPoints" value="1" min="0.5" step="0.5"></div>
+      <button class="btn btn-primary" onclick="addToBank()">📥 Agregar al Banco</button>
+      <hr>
+      <h4>Preguntas en banco: <span id="bankCount">0</span></h4>
+      <div id="bankList"></div>
+    </div>
+
+    <!-- TAB CONFIG -->
+    <div id="tab-config" class="tab-content">
+      <h3>Generar Examen Aleatorio</h3>
+      <div class="form-group"><label>Cantidad Opción Única</label><input type="number" id="nSingle" value="5" min="0"></div>
+      <div class="form-group"><label>Cantidad Opción Múltiple</label><input type="number" id="nMulti" value="5" min="0"></div>
+      <div class="form-group"><label>Tiempo Total (minutos)</label><input type="number" id="totalTime" value="45" min="5"></div>
+      <button class="btn btn-success" onclick="generateExam()">🎲 Generar y Publicar Examen</button>
+      <p style="color:#666; margin-top:0.5rem;">Se seleccionarán preguntas al azar del banco. El puntaje máximo se normalizará a /10 automáticamente.</p>
+      <hr>
+      <h4>Vista Previa del Examen Publicado</h4>
+      <div id="examPreview"></div>
+    </div>
+
+    <!-- TAB RESULTADOS -->
     <div id="tab-results" class="tab-content">
-      <h2>📊 Resultados de Alumnos</h2>
-      <div id="resultsList">
-        <p>No hay resultados cargados aún. Los alumnos deben completar el examen.</p>
-      </div>
-    </div>
-
-    <!-- Tab: Feedback -->
-    <div id="tab-feedback" class="tab-content">
-      <h2>📨 Habilitar Feedback</h2>
-      <p>Al habilitar el feedback, los alumnos podrán ver sus respuestas correctas, incorrectas y puntaje desde <code>feedback.html</code>.</p>
-      <button class="btn btn-success" onclick="enableFeedback()">✅ Habilitar Feedback para todos</button>
-      <button class="btn btn-danger" onclick="disableFeedback()">❌ Deshabilitar Feedback</button>
-      <p id="feedbackStatus" style="margin-top:0.5rem;"></p>
+      <p>Los resultados se guardan en Google Sheets. Puedes verlos directamente en tu hoja o consultar por DNI en la pestaña <code>feedback.html</code>.</p>
+      <a href="feedback.html" target="_blank" class="btn btn-secondary">🔗 Abrir Feedback (Alumnos)</a>
     </div>
   </div>
-
-  <script src="main.js"></script>
   <script src="admin.js"></script>
 </body>
 </html>

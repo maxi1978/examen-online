@@ -7,57 +7,23 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body oncontextmenu="return false" ondragstart="return false" onselectstart="return false">
-  <div class="container quiz-container">
-    <div class="quiz-header">
+  <div class="container">
+    <div class="header">
       <div id="studentInfo"></div>
       <div class="timer" id="timer">⏱️ --:--</div>
-      <div id="questionCounter"></div>
+      <div id="qCounter"></div>
     </div>
-
-    <div id="quizContent">
-      <!-- Preguntas se renderizan aquí -->
-    </div>
-
-    <div class="quiz-footer">
-      <button id="prevBtn" class="btn btn-secondary" onclick="prevQuestion()">← Anterior</button>
-      <button id="nextBtn" class="btn btn-primary" onclick="nextQuestion()">Siguiente →</button>
-      <button id="submitBtn" class="btn btn-success" onclick="submitQuiz()" style="display:none;">📤 Finalizar Examen</button>
+    <div id="quizContent"></div>
+    <div class="footer">
+      <button class="btn btn-secondary" onclick="prev()" id="btnPrev">← Anterior</button>
+      <button class="btn btn-primary" onclick="next()" id="btnNext">Siguiente →</button>
+      <button class="btn btn-success" onclick="submit()" id="btnSubmit" style="display:none">📤 Finalizar</button>
     </div>
   </div>
 
-  <!-- Modal de tiempo agotado -->
-  <div id="timeUpModal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <h2>⏰ Tiempo agotado</h2>
-      <p>Se ha finalizado el examen automáticamente.</p>
-      <button class="btn btn-primary" onclick="submitQuiz()">Aceptar</button>
-    </div>
-  </div>
+  <div id="timeModal" class="modal" style="display:none"><div class="modal-content"><h2>⏰ Tiempo agotado</h2><p>Se enviarán automáticamente las respuestas guardadas.</p><button class="btn btn-primary" onclick="submit()">Aceptar</button></div></div>
 
   <script src="main.js"></script>
   <script src="quiz.js"></script>
-  <script>
-    // Bloqueo de copiar/pegar
-    document.addEventListener('keydown', function(e) {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V' || e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P')) {
-        e.preventDefault();
-        return false;
-      }
-      if (e.key === 'F12') { e.preventDefault(); return false; }
-      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) { e.preventDefault(); return false; }
-    });
-
-    document.addEventListener('copy', e => e.preventDefault());
-    document.addEventListener('paste', e => e.preventDefault());
-    document.addEventListener('cut', e => e.preventDefault());
-
-    // Bloquear salida de la página
-    window.addEventListener('beforeunload', function(e) {
-      if (!window.quizSubmitted) {
-        e.preventDefault();
-        e.returnValue = 'Si sale del examen se perderán sus respuestas.';
-      }
-    });
-  </script>
 </body>
 </html>
