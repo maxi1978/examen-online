@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Examen Online — Acceso</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container login-container">
+    <h1>🎓 Acceso al Examen</h1>
+    <p class="subtitle">Complete sus datos para comenzar</p>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="form-group">
+        <label for="apellido">Apellido</label>
+        <input type="text" id="apellido" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="nombre">Nombre</label>
+        <input type="text" id="nombre" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="dni">DNI</label>
+        <input type="text" id="dni" required autocomplete="off" pattern="[0-9]{7,8}" title="Ingrese DNI sin puntos">
+      </div>
+      <button type="submit" class="btn btn-primary">Ingresar al Examen</button>
+    </form>
+
+    <div id="loginError" class="error-msg" style="display:none;"></div>
+    <p id="feedbackAvailable" style="display:none; margin-top:1rem;">
+      <a href="feedback.html" class="btn btn-secondary">📋 Ver mis resultados</a>
+    </p>
+  </div>
+
+  <script src="main.js"></script>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const apellido = document.getElementById('apellido').value.trim();
+      const nombre = document.getElementById('nombre').value.trim();
+      const dni = document.getElementById('dni').value.trim();
+
+      if (!apellido || !nombre || !dni) {
+        showError('Complete todos los campos.');
+        return;
+      }
+
+      if (!/^[0-9]{7,8}$/.test(dni)) {
+        showError('El DNI debe contener 7 u 8 dígitos numéricos.');
+        return;
+      }
+
+      const student = { apellido, nombre, dni, timestamp: Date.now() };
+      localStorage.setItem('examStudent', JSON.stringify(student));
+      window.location.href = 'quiz.html';
+    });
+
+    function showError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

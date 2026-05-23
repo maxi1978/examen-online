@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel del Profesor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container admin-container">
+    <h1>👨‍🏫 Panel del Profesor</h1>
+
+    <div class="admin-tabs">
+      <button class="tab-btn active" onclick="showTab('config')">⚙️ Configurar Examen</button>
+      <button class="tab-btn" onclick="showTab('results')">📊 Resultados</button>
+      <button class="tab-btn" onclick="showTab('feedback')">📨 Feedback</button>
+    </div>
+
+    <!-- Tab: Configuración -->
+    <div id="tab-config" class="tab-content active">
+      <h2>Configuración del Examen</h2>
+      <div class="form-group">
+        <label>Google Apps Script URL (para enviar a Sheets)</label>
+        <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="btn btn-small" onclick="saveGasUrl()">Guardar URL</button>
+      </div>
+
+      <hr>
+
+      <h3>Agregar Pregunta</h3>
+      <div class="form-group">
+        <label>Enunciado</label>
+        <textarea id="qText" rows="3" placeholder="Escriba la pregunta..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Tipo de pregunta</label>
+        <select id="qType" onchange="toggleCorrectOptions()">
+          <option value="single">Opción única (1 correcta)</option>
+          <option value="multiple">Opciones múltiples (varias correctas)</option>
+        </select>
+      </div>
+      <div class="form-group" id="optionsContainer">
+        <label>Opciones</label>
+        <div id="optionsList"></div>
+        <button class="btn btn-small" onclick="addOption()">+ Agregar opción</button>
+      </div>
+      <div class="form-group">
+        <label>Respuesta/s correcta/s (seleccione)</label>
+        <div id="correctOptions"></div>
+      </div>
+      <div class="form-group">
+        <label>Puntaje</label>
+        <input type="number" id="qPoints" value="1" min="0" step="0.5">
+      </div>
+      <div class="form-group">
+        <label>Tiempo por pregunta (segundos)</label>
+        <input type="number" id="qTime" value="60" min="10" step="5">
+      </div>
+      <button class="btn btn-primary" onclick="addQuestion()">Agregar Pregunta</button>
+
+      <hr>
+
+      <h3>Preguntas cargadas (<span id="qCount">0</span>)</h3>
+      <div id="questionsList"></div>
+      <div class="form-group" style="margin-top:1rem;">
+        <button class="btn btn-success" onclick="publishExam()">🚀 Publicar Examen</button>
+        <button class="btn btn-danger" onclick="clearQuestions()">🗑️ Limpiar todas</button>
+      </div>
+    </div>
+
+    <!-- Tab: Resultados -->
+    <div id="tab-results" class="tab-content">
+      <h2>📊 Resultados de Alumnos</h2>
+      <div id="resultsList">
+        <p>No hay resultados cargados aún. Los alumnos deben completar el examen.</p>
+      </div>
+    </div>
+
+    <!-- Tab: Feedback -->
+    <div id="tab-feedback" class="tab-content">
+      <h2>📨 Habilitar Feedback</h2>
+      <p>Al habilitar el feedback, los alumnos podrán ver sus respuestas correctas, incorrectas y puntaje desde <code>feedback.html</code>.</p>
+      <button class="btn btn-success" onclick="enableFeedback()">✅ Habilitar Feedback para todos</button>
+      <button class="btn btn-danger" onclick="disableFeedback()">❌ Deshabilitar Feedback</button>
+      <p id="feedbackStatus" style="margin-top:0.5rem;"></p>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
