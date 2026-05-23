@@ -3,51 +3,137 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ver Resultados</title>
+  <title>Consultar Resultados</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <h1>📋 Consulta de Resultados</h1>
-    <div class="form-group" style="max-width:300px; margin:auto;">
-      <label>Ingrese su DNI</label>
-      <input type="text" id="dni" placeholder="Ej: 12345678" pattern="[0-9]{7,8}">
-      <button class="btn btn-primary" onclick="fetchResult()" style="width:100%; margin-top:0.5rem">🔍 Buscar</button>
+  <div class="container" style="max-width: 600px;">
+    <h1>📋 Mis Resultados</h1>
+    <p class="subtitle">Ingresa tu DNI para ver tu nota y feedback</p>
+    
+    <div class="form-group" style="background: var(--gray-100); padding: 2rem; border-radius: var(--radius-lg);">
+      <label for="dni" style="font-size: 1.125rem;">🔢 Número de DNI</label>
+      <input type="text" id="dni" placeholder="Ej: 12345678" pattern="[0-9]{7,8}" 
+             style="font-size: 1.25rem; padding: 1rem; text-align: center; letter-spacing: 2px;">
+      <button class="btn btn-primary" onclick="fetchResult()" 
+              style="width: 100%; margin-top: 1rem; padding: 1rem; font-size: 1.125rem;">
+        🔍 Buscar Mis Resultados
+      </button>
     </div>
-    <div id="result" style="margin-top:2rem;"></div>
-    <a href="index.html" class="btn btn-secondary" style="display:block; text-align:center; margin-top:2rem;">← Volver</a>
+    
+    <div id="result" style="margin-top: 2rem;"></div>
+    
+    <div style="text-align: center; margin-top: 2rem; padding-top: 2rem; border-top: 2px solid var(--gray-200);">
+      <a href="index.html" class="btn btn-secondary">← Volver al Inicio</a>
+    </div>
   </div>
+  
   <script src="main.js"></script>
   <script>
     async function fetchResult() {
       const dni = document.getElementById('dni').value.trim();
-      if (!/^\d{7,8}$/.test(dni)) return alert('Ingrese un DNI válido (7 u 8 dígitos)');
-      const url = localStorage.getItem('gasUrl');
-      if (!url || !url.startsWith('http')) return alert('La URL del Apps Script no está configurada. Contacte al profesor.');
+      if (!/^\d{7,8}$/.test(dni)) {
+        alert('⚠️ Por favor, ingresa un DNI válido (7 u 8 dígitos numéricos)');
+        return;
+      }
       
-      document.getElementById('result').innerHTML = '<p>⏳ Buscando...</p>';
+      const url = localStorage.getItem('gasUrl');
+      if (!url || !url.startsWith('http')) {
+        alert('⚠️ La URL del sistema no está configurada. Contacta al profesor.');
+        return;
+      }
+      
+      document.getElementById('result').innerHTML = `
+        <div style="text-align: center; padding: 3rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">⏳</div>
+          <p style="font-size: 1.25rem; color: var(--gray-600);">Buscando tus resultados...</p>
+        </div>
+      `;
+      
       try {
         const res = await fetch(`${url}?action=getByDni&dni=${dni}`);
         const data = await res.json();
+        
         if (data.found) {
           const q = JSON.parse(localStorage.getItem('examQuestions') || '[]');
-          let html = `<div class="res-card"><h2>Nota: ${data.data.finalScore10} / 10</h2><p>${data.data.student.apellido}, ${data.data.student.nombre} | ${new Date(data.data.timestamp).toLocaleString()}</p></div>`;
-          data.data.details.forEach(d => {
-            const pq = q.find(x => x.questionIndex === d.q) || {};
-            const isOk = d.userAnswer.join(',') === d.correct.join(',');
-            html += `<div class="fb-q ${isOk?'correct':'incorrect'}">
-              <h4>Pregunta ${d.q+1} ${isOk?'✅':'❌'} (${d.score} pts)</h4>
-              <p>${pq.text || 'Pregunta no disponible'}</p>
-              <p><strong>Tu respuesta:</strong> ${(d.userAnswer||[]).map(i => pq.options[i]||'?').join(', ') || 'Sin responder'}</p>
-              ${!isOk ? `<p><strong>Correcta:</strong> ${d.correct.map(i => pq.options[i]).join(', ')}</p>` : ''}
-            </div>`;
-          });
+          const nota = data.data.finalScore10;
+          const color = nota >= 6 ? 'var(--success)' : nota >= 4 ? 'var(--warning)' : 'var(--danger)';
+          const emoji = nota >= 6 ? '🎉' : nota >= 4 ? '📚' : '💪';
+          
+          let html = `
+            <div class="res-card" style="border-color: ${color}; background: linear-gradient(135deg, ${color}11 0%, ${color}22 100%);">
+              <div style="font-size: 4rem; margin-bottom: 0.5rem;">${emoji}</div>
+              <h2 style="color: ${color}; font-size: 4rem; margin: 1rem 0;">${nota} / 10</h2>
+              <p style="font-size: 1.25rem; color: var(--gray-700); margin-bottom: 0.5rem;">
+                ${data.data.student.apellido}, ${data.data.student.nombre}
+              </p>
+              <p style="color: var(--gray-500); font-size: 0.95rem;">
+                ${new Date(data.data.timestamp).toLocaleString('es-AR')}
+              </p>
+            </div>
+          `;
+          
+          if (data.data.details && data.data.details.length > 0) {
+            html += '<h3 style="margin: 2rem 0 1.5rem;">📝 Detalle por Pregunta</h3>';
+            
+            data.data.details.forEach((d, idx) => {
+              const pq = q.find(x => x.questionIndex === d.q) || {};
+              const isOk = d.userAnswer && d.userAnswer.join(',') === d.correct.join(',');
+              const userAnswers = (d.userAnswer || []).map(i => pq.options[i] || '?').join(', ') || 'Sin responder';
+              const correctAnswers = d.correct.map(i => pq.options[i]).join(', ');
+              
+              html += `
+                <div class="fb-q ${isOk ? 'correct' : 'incorrect'}">
+                  <h4>
+                    ${isOk ? '✅' : '❌'} Pregunta ${idx + 1}
+                    <span style="margin-left: auto; font-size: 0.95rem; opacity: 0.8;">
+                      ${d.score.toFixed(2)} pts
+                    </span>
+                  </h4>
+                  <p style="font-size: 1.05rem; margin-bottom: 1rem; line-height: 1.6;">
+                    ${pq.text || 'Pregunta no disponible'}
+                  </p>
+                  <div style="background: white; padding: 1rem; border-radius: 8px; margin: 0.75rem 0;">
+                    <strong style="color: var(--gray-700);">Tu respuesta:</strong>
+                    <p style="margin: 0.5rem 0 0; color: ${isOk ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">
+                      ${userAnswers}
+                    </p>
+                  </div>
+                  ${!isOk ? `
+                    <div style="background: white; padding: 1rem; border-radius: 8px; margin: 0.75rem 0;">
+                      <strong style="color: var(--gray-700);">Respuesta correcta:</strong>
+                      <p style="margin: 0.5rem 0 0; color: var(--success); font-weight: 600;">
+                        ${correctAnswers}
+                      </p>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            });
+          }
+          
           document.getElementById('result').innerHTML = html;
         } else {
-          document.getElementById('result').innerHTML = `<p class="error-msg">❌ No se encontraron resultados para DNI ${dni}</p>`;
+          document.getElementById('result').innerHTML = `
+            <div class="error-msg" style="padding: 2rem;">
+              <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+              <p style="font-size: 1.125rem;">No se encontraron resultados para el DNI ${dni}</p>
+              <p style="margin-top: 1rem; font-size: 0.95rem; opacity: 0.9;">
+                Verifica que hayas completado el examen o consulta con el profesor.
+              </p>
+            </div>
+          `;
         }
       } catch(e) {
-        document.getElementById('result').innerHTML = `<p class="error-msg">Error de conexión. Intente más tarde.</p>`;
+        document.getElementById('result').innerHTML = `
+          <div class="error-msg" style="padding: 2rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+            <p style="font-size: 1.125rem;">Error de conexión</p>
+            <p style="margin-top: 1rem; font-size: 0.95rem;">
+              Intenta nuevamente en unos momentos o contacta al profesor.
+            </p>
+          </div>
+        `;
       }
     }
   </script>

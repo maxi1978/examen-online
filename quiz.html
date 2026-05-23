@@ -9,19 +9,31 @@
 <body oncontextmenu="return false" ondragstart="return false" onselectstart="return false">
   <div class="container">
     <div class="header">
-      <div id="studentInfo"></div>
+      <div id="studentInfo">👤 Cargando...</div>
       <div class="timer" id="timer">⏱️ --:--</div>
-      <div id="qCounter"></div>
+      <div id="qCounter">📝 0 / 0</div>
     </div>
-    <div id="quizContent"></div>
+    
+    <div id="quizContent">
+      <!-- Las preguntas se renderizan aquí -->
+    </div>
+    
     <div class="footer">
       <button class="btn btn-secondary" onclick="prev()" id="btnPrev">← Anterior</button>
       <button class="btn btn-primary" onclick="next()" id="btnNext">Siguiente →</button>
-      <button class="btn btn-success" onclick="submit()" id="btnSubmit" style="display:none">📤 Finalizar</button>
+      <button class="btn btn-success" onclick="submit()" id="btnSubmit" style="display:none">📤 Finalizar Examen</button>
     </div>
   </div>
 
-  <div id="timeModal" class="modal" style="display:none"><div class="modal-content"><h2>⏰ Tiempo agotado</h2><p>Se enviarán automáticamente las respuestas guardadas.</p><button class="btn btn-primary" onclick="submit()">Aceptar</button></div></div>
+  <div id="timeModal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h2>⏰ Tiempo Agotado</h2>
+      <p style="font-size: 1.125rem; color: var(--gray-600); margin: 1.5rem 0;">
+        Se enviarán automáticamente las respuestas guardadas hasta el momento.
+      </p>
+      <button class="btn btn-primary" onclick="submit()">Entender y Enviar</button>
+    </div>
+  </div>
 
   <script src="main.js"></script>
   <script src="quiz.js"></script>

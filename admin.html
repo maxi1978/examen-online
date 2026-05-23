@@ -9,10 +9,14 @@
 <body>
   <div class="container">
     <h1>👨‍🏫 Panel del Profesor</h1>
-    <div class="form-group">
-      <label>Google Apps Script URL</label>
-      <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec">
-      <button class="btn btn-small" onclick="localStorage.setItem('gasUrl', document.getElementById('gasUrl').value); alert('Guardado')">💾 Guardar</button>
+    <p class="subtitle">Gestiona tu banco de preguntas y configura exámenes</p>
+    
+    <div class="form-group" style="background: var(--gray-100); padding: 1.5rem; border-radius: var(--radius);">
+      <label for="gasUrl">🔗 Google Apps Script URL</label>
+      <div style="display: flex; gap: 0.75rem;">
+        <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec" style="flex: 1;">
+        <button class="btn btn-primary" onclick="localStorage.setItem('gasUrl', document.getElementById('gasUrl').value); alert('✅ URL guardada correctamente')">💾 Guardar</button>
+      </div>
     </div>
 
     <div class="tabs">
@@ -23,41 +27,103 @@
 
     <!-- TAB BANCO -->
     <div id="tab-bank" class="tab-content active">
-      <h3>Agregar al Banco</h3>
-      <div class="form-group"><textarea id="qText" rows="2" placeholder="Enunciado"></textarea></div>
+      <h3>➕ Agregar Nueva Pregunta al Banco</h3>
+      
       <div class="form-group">
-        <label>Tipo</label>
-        <select id="qType" onchange="updateCorrectUI()"><option value="single">Opción Única</option><option value="multiple">Opción Múltiple</option></select>
+        <label>Enunciado de la Pregunta</label>
+        <textarea id="qText" rows="3" placeholder="Ej: ¿Cuál es la capital de Francia?"></textarea>
       </div>
-      <div id="optsContainer"></div>
-      <button class="btn btn-small" onclick="addOpt()">+ Opción</button>
-      <div id="correctUI" class="form-group" style="margin-top:0.5rem;"><label>Marcar correcta/s:</label></div>
-      <div class="form-group"><label>Puntaje</label><input type="number" id="qPoints" value="1" min="0.5" step="0.5"></div>
-      <button class="btn btn-primary" onclick="addToBank()">📥 Agregar al Banco</button>
+      
+      <div class="form-group">
+        <label>Tipo de Pregunta</label>
+        <select id="qType" onchange="updateCorrectUI()" style="width: 100%;">
+          <option value="single">🔘 Opción Única (una sola respuesta correcta)</option>
+          <option value="multiple">☑️ Opción Múltiple (varias respuestas correctas)</option>
+        </select>
+      </div>
+      
+      <div id="optsContainer">
+        <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: var(--gray-700);">Opciones de Respuesta</label>
+      </div>
+      
+      <button class="btn btn-secondary btn-small" onclick="addOpt()" style="margin-bottom: 1.5rem;">➕ Agregar Otra Opción</button>
+      
+      <div id="correctUI" class="form-group">
+        <label style="display: block; margin-bottom: 0.75rem; font-weight: 600; color: var(--gray-700);">Marcar la/s respuesta/s correcta/s:</label>
+      </div>
+      
+      <div class="form-group">
+        <label>Puntaje de esta pregunta</label>
+        <input type="number" id="qPoints" value="1" min="0.5" step="0.5" style="width: 150px;">
+      </div>
+      
+      <button class="btn btn-primary" onclick="addToBank()" style="width: 100%; padding: 1rem;">📥 Agregar al Banco de Preguntas</button>
+      
       <hr>
-      <h4>Preguntas en banco: <span id="bankCount">0</span></h4>
-      <div id="bankList"></div>
+      
+      <h4>Preguntas en el Banco <span style="background: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem;" id="bankCount">0</span></h4>
+      <div id="bankList" style="margin-top: 1rem;">
+        <p style="color: var(--gray-500); text-align: center; padding: 2rem;">No hay preguntas cargadas aún</p>
+      </div>
     </div>
 
     <!-- TAB CONFIG -->
     <div id="tab-config" class="tab-content">
-      <h3>Generar Examen Aleatorio</h3>
-      <div class="form-group"><label>Cantidad Opción Única</label><input type="number" id="nSingle" value="5" min="0"></div>
-      <div class="form-group"><label>Cantidad Opción Múltiple</label><input type="number" id="nMulti" value="5" min="0"></div>
-      <div class="form-group"><label>Tiempo Total (minutos)</label><input type="number" id="totalTime" value="45" min="5"></div>
-      <button class="btn btn-success" onclick="generateExam()">🎲 Generar y Publicar Examen</button>
-      <p style="color:#666; margin-top:0.5rem;">Se seleccionarán preguntas al azar del banco. El puntaje máximo se normalizará a /10 automáticamente.</p>
-      <hr>
-      <h4>Vista Previa del Examen Publicado</h4>
-      <div id="examPreview"></div>
+      <h3>🎲 Generar Examen Aleatorio</h3>
+      <p style="color: var(--gray-600); margin-bottom: 1.5rem;">
+        El sistema seleccionará automáticamente preguntas al azar del banco según las cantidades que especifiques.
+      </p>
+      
+      <div class="form-group">
+        <label>Cantidad de Preguntas de Opción Única</label>
+        <input type="number" id="nSingle" value="5" min="0" style="width: 150px;">
+      </div>
+      
+      <div class="form-group">
+        <label>Cantidad de Preguntas de Opción Múltiple</label>
+        <input type="number" id="nMulti" value="5" min="0" style="width: 150px;">
+      </div>
+      
+      <div class="form-group">
+        <label>Tiempo Total del Examen (en minutos)</label>
+        <input type="number" id="totalTime" value="45" min="5" step="5" style="width: 150px;">
+      </div>
+      
+      <button class="btn btn-success" onclick="generateExam()" style="width: 100%; padding: 1.25rem; font-size: 1.125rem;">
+        🎲 Generar y Publicar Examen
+      </button>
+      
+      <div style="background: var(--gray-100); padding: 1.25rem; border-radius: var(--radius); margin-top: 1.5rem; font-size: 0.95rem; color: var(--gray-600);">
+        <strong>ℹ️ Importante:</strong> El puntaje máximo se normalizará automáticamente sobre 10. 
+        Las respuestas incorrectas restan puntos, pero las omisiones no afectan la nota.
+      </div>
+      
+      <div id="examPreview" style="display: none;"></div>
     </div>
 
     <!-- TAB RESULTADOS -->
     <div id="tab-results" class="tab-content">
-      <p>Los resultados se guardan en Google Sheets. Puedes verlos directamente en tu hoja o consultar por DNI en la pestaña <code>feedback.html</code>.</p>
-      <a href="feedback.html" target="_blank" class="btn btn-secondary">🔗 Abrir Feedback (Alumnos)</a>
+      <h3>📊 Ver Resultados</h3>
+      <p style="color: var(--gray-600); margin-bottom: 1.5rem; line-height: 1.8;">
+        Los resultados se guardan automáticamente en tu Google Sheet. 
+        Los alumnos pueden consultar sus notas individuales ingresando su DNI en la página de feedback.
+      </p>
+      
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <a href="feedback.html" target="_blank" class="btn btn-primary">🔗 Abrir Página de Feedback</a>
+        <a href="https://sheets.google.com" target="_blank" class="btn btn-secondary">📈 Ver Google Sheet</a>
+      </div>
+      
+      <div style="margin-top: 2rem; padding: 1.5rem; background: var(--gray-100); border-radius: var(--radius);">
+        <h4>💡 Consejo</h4>
+        <p style="color: var(--gray-600); margin-top: 0.5rem;">
+          Para ver todos los resultados juntos, revisa tu hoja de cálculo de Google Sheets. 
+          Allí tendrás un listado completo de todos los alumnos con sus notas.
+        </p>
+      </div>
     </div>
   </div>
+  
   <script src="admin.js"></script>
 </body>
 </html>
